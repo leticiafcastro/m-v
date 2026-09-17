@@ -1,0 +1,13 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary-blue: #123d70;
+  --color-primary-blue-dark: #091a30;
+  --color-primary-blue-card: #0e2748;
+  --color-primary-blue-border: #1b4d88;
+  --color-primary-blue-light: #185296;
+
+  --color-accent-orange: #ffbd59;
+  --color-accent-orange-deep: #ce6200;
+  --color-accent-orange-hover: #b55500;
+}

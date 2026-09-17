@@ -1,0 +1,6 @@
+{
+  "name": "Quiz Kahoot: Monitoramento, Avaliação e Modelo Lógico em Saúde",
+  "description": "Quizz de Monitoramento e Avaliação da Disciplina de Assistência Farmacêutica - Faculdade de Farmácia, Universidade Federal Fluminense.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
