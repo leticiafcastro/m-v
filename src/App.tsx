@@ -395,7 +395,7 @@ export default function App() {
                     <span>IDENTIFICAÇÃO DO GRUPO <span className="text-red-500 font-black">* (Obrigatório)</span></span>
                   </label>
                   <p className="text-xs text-slate-500 font-normal">
-                    Informe o nome da equipe ou integrantes para registro oficial da pontuação.
+                    Informe o nome da equipe e o período da aula (Manhã ou tarde)
                   </p>
                 </div>
 
