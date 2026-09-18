@@ -160,7 +160,7 @@ export default function App() {
   const totalCorrect = answerHistory.filter((a) => a.isCorrect).length;
   const accuracyPercent = quiz.questions.length > 0 ? Math.round((totalCorrect / quiz.questions.length) * 100) : 0;
   
-  // Automatic submission of results to Supabase table 'mev' when reaching summary screen
+  // Automatic submission of results to Supabase table 'm-e-v' when reaching summary screen
   useEffect(() => {
     if (appState === 'summary' && !supabaseSubmitted && !isSubmittingToSupabase) {
       let isMounted = true;
@@ -171,30 +171,35 @@ export default function App() {
         ? studentName.trim()
         : 'Grupo Sem Nome';
 
-      submitMevResult({
-        nome_grupo: groupNameToSave,
-        acertos: totalCorrect,
-        total_itens: quiz.questions.length,
-      })
-        .then((res) => {
+      const performSubmit = async () => {
+        try {
+          const res = await submitMevResult({
+            nome_grupo: groupNameToSave,
+            acertos: totalCorrect,
+            total_itens: quiz.questions.length,
+          });
+
           if (isMounted) {
             if (res.success) {
               setSupabaseSubmitted(true);
+              setSupabaseError(null);
             } else {
               setSupabaseError(res.error || 'Erro ao enviar pontuação');
             }
           }
-        })
-        .catch((err) => {
+        } catch (err) {
           if (isMounted) {
             setSupabaseError(err instanceof Error ? err.message : String(err));
           }
-        })
-        .finally(() => {
+        } finally {
+          // Immediately hide/remove the loading indicator as soon as submission finishes
           if (isMounted) {
             setIsSubmittingToSupabase(false);
           }
-        });
+        }
+      };
+
+      performSubmit();
 
       return () => {
         isMounted = false;
@@ -677,18 +682,26 @@ export default function App() {
                   </div>
                   <button
                     type="button"
-                    onClick={() => {
+                    onClick={async () => {
                       setIsSubmittingToSupabase(true);
                       setSupabaseError(null);
-                      submitMevResult({
-                        nome_grupo: studentName?.trim() || 'Grupo Sem Nome',
-                        acertos: totalCorrect,
-                        total_itens: quiz.questions.length,
-                      }).then((res) => {
-                        if (res.success) setSupabaseSubmitted(true);
-                        else setSupabaseError(res.error || 'Erro ao reenviar');
-                      }).catch((e) => setSupabaseError(String(e)))
-                        .finally(() => setIsSubmittingToSupabase(false));
+                      try {
+                        const res = await submitMevResult({
+                          nome_grupo: studentName?.trim() || 'Grupo Sem Nome',
+                          acertos: totalCorrect,
+                          total_itens: quiz.questions.length,
+                        });
+                        if (res.success) {
+                          setSupabaseSubmitted(true);
+                          setSupabaseError(null);
+                        } else {
+                          setSupabaseError(res.error || 'Erro ao reenviar');
+                        }
+                      } catch (e) {
+                        setSupabaseError(e instanceof Error ? e.message : String(e));
+                      } finally {
+                        setIsSubmittingToSupabase(false);
+                      }
                     }}
                     className="px-4 py-2 bg-[#123d70] text-white rounded-xl text-xs font-bold hover:bg-[#103664] transition-all cursor-pointer shrink-0"
                   >

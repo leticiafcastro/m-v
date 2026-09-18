@@ -9,7 +9,7 @@ export interface MevRecord {
   total_itens: number;
 }
 
-// Submits the quiz result to Supabase mev table
+// Submits the quiz result to Supabase 'm-e-v' table using robust try/catch/finally handling
 export async function submitMevResult(data: MevRecord): Promise<{ success: boolean; error?: string }> {
   try {
     // 1. Try official client injected via CDN script if available
@@ -59,13 +59,16 @@ export async function submitMevResult(data: MevRecord): Promise<{ success: boole
     });
 
     if (!response.ok) {
-      const errText = await response.text().catch(() => 'Network response was not ok');
+      const errText = await response.text().catch(() => 'Erro na resposta da rede');
       return { success: false, error: errText };
     }
 
     return { success: true };
   } catch (err) {
-    console.error('Error submitting result to Supabase mev table:', err);
+    console.error('Error submitting result to Supabase m-e-v table:', err);
     return { success: false, error: err instanceof Error ? err.message : String(err) };
+  } finally {
+    // Guaranteed finalization log
+    console.log('Finalizada a tentativa de envio para a tabela m-e-v do Supabase.');
   }
 }
