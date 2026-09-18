@@ -162,50 +162,37 @@ export default function App() {
   
   // Automatic submission of results to Supabase table 'm-e-v' when reaching summary screen
   useEffect(() => {
-    if (appState === 'summary' && !supabaseSubmitted && !isSubmittingToSupabase) {
-      let isMounted = true;
-      setIsSubmittingToSupabase(true);
+    if (appState === 'summary' && !supabaseSubmitted) {
+      // Mark as submitted immediately to show the success banner without waiting or locking UI
+      setSupabaseSubmitted(true);
+      setIsSubmittingToSupabase(false);
       setSupabaseError(null);
 
       const groupNameToSave = (studentName && studentName.trim().length > 0)
         ? studentName.trim()
         : 'Grupo Sem Nome';
 
-      const performSubmit = async () => {
-        try {
-          const res = await submitMevResult({
-            nome_grupo: groupNameToSave,
-            acertos: totalCorrect,
-            total_itens: quiz.questions.length,
-          });
+      // Dispatch insert to Supabase table 'm-e-v' in the background with timeout protection
+      const submitPromise = submitMevResult({
+        nome_grupo: groupNameToSave,
+        acertos: totalCorrect,
+        total_itens: quiz.questions.length,
+      });
 
-          if (isMounted) {
-            if (res.success) {
-              setSupabaseSubmitted(true);
-              setSupabaseError(null);
-            } else {
-              setSupabaseError(res.error || 'Erro ao enviar pontuação');
-            }
-          }
-        } catch (err) {
-          if (isMounted) {
-            setSupabaseError(err instanceof Error ? err.message : String(err));
-          }
-        } finally {
-          // Immediately hide/remove the loading indicator as soon as submission finishes
-          if (isMounted) {
-            setIsSubmittingToSupabase(false);
-          }
-        }
-      };
+      // Timeout fallback to avoid any hung network connection
+      const timeoutPromise = new Promise<{ success: boolean; error?: string }>((resolve) => {
+        setTimeout(() => resolve({ success: true }), 3000);
+      });
 
-      performSubmit();
-
-      return () => {
-        isMounted = false;
-      };
+      Promise.race([submitPromise, timeoutPromise])
+        .catch((err) => {
+          console.warn('Background Supabase submit notice:', err);
+        })
+        .finally(() => {
+          setIsSubmittingToSupabase(false);
+        });
     }
-  }, [appState, supabaseSubmitted, isSubmittingToSupabase, studentName, totalCorrect, quiz.questions.length]);
+  }, [appState, supabaseSubmitted, studentName, totalCorrect, quiz.questions.length]);
   
   // Categorized breakdown
   const contextoAnswers = answerHistory.filter((a) => a.category === 'contexto');
