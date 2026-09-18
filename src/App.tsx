@@ -662,19 +662,19 @@ export default function App() {
             <div className="max-w-xl mx-auto w-full">
               {isSubmittingToSupabase && (
                 <div className="p-4 rounded-2xl bg-blue-50 border-2 border-blue-300 flex items-center justify-center gap-3 text-[#123d70] font-bold text-sm shadow-sm animate-pulse">
-                  <Loader2 className="w-5 h-5 animate-spin text-[#123d70]" />
+                  <Loader2 className="w-5 h-5 animate-spin text-[#123d70] shrink-0" />
                   <span>Registrando pontuação do grupo no sistema...</span>
                 </div>
               )}
 
-              {supabaseSubmitted && (
+              {!isSubmittingToSupabase && supabaseSubmitted && (
                 <div className="p-4 rounded-2xl bg-emerald-50 border-2 border-emerald-500 flex items-center justify-center gap-2 text-emerald-800 font-black text-sm sm:text-base shadow-md animate-in fade-in zoom-in-95 duration-300 text-center">
                   <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
-                  <span>✅ Pontuação enviada com sucesso para o professor!</span>
+                  <span>✅ Pontuação registrada com sucesso no sistema!</span>
                 </div>
               )}
 
-              {supabaseError && !supabaseSubmitted && (
+              {!isSubmittingToSupabase && supabaseError && !supabaseSubmitted && (
                 <div className="p-4 rounded-2xl bg-amber-50 border-2 border-amber-400 flex flex-col sm:flex-row items-center justify-between gap-3 text-amber-900 text-xs sm:text-sm shadow-sm">
                   <div className="flex items-center gap-2 font-medium">
                     <AlertCircle className="w-4 h-4 text-amber-700 shrink-0" />
