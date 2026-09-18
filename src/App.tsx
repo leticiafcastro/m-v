@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import confetti from 'canvas-confetti';
 import { 
   Play, 
@@ -16,19 +16,22 @@ import {
   Target,
   ChevronRight,
   Check,
-  AlertCircle
+  AlertCircle,
+  Loader2
 } from 'lucide-react';
 import { Quiz, QuizQuestion, UserAnswerRecord } from './types';
 import { DEFAULT_HEALTH_QUIZ, KAHOOT_COLORS_MAP } from './data/healthInterventionQuiz';
 import { soundEngine } from './utils/audio';
 import { QuestionsEditorModal } from './components/QuestionsEditorModal';
-import pharmacyBannerImg from './assets/images/farmacia_municipal_1789600797575.jpg';
+import { submitMevResult } from './utils/supabaseClient';
+import pharmacyBannerImg from './assets/images/farmacia_municipal_sem_texto_1789760741893.jpg';
 
 export default function App() {
   const [quiz, setQuiz] = useState<Quiz>(DEFAULT_HEALTH_QUIZ);
   const [appState, setAppState] = useState<'intro' | 'quiz' | 'summary'>('intro');
   const [currentQIndex, setCurrentQIndex] = useState<number>(0);
-  const [studentName, setStudentName] = useState<string>('Grupo 1');
+  const [studentName, setStudentName] = useState<string>('');
+  const [nameValidationError, setNameValidationError] = useState<boolean>(false);
   const [isMuted, setIsMuted] = useState<boolean>(soundEngine.isMuted());
   const [isEditorOpen, setIsEditorOpen] = useState<boolean>(false);
 
@@ -40,6 +43,11 @@ export default function App() {
   const [highestStreak, setHighestStreak] = useState<number>(0);
   const [answerHistory, setAnswerHistory] = useState<UserAnswerRecord[]>([]);
   const [reviewFilter, setReviewFilter] = useState<'all' | 'correct' | 'wrong'>('all');
+
+  // Supabase automatic submission state
+  const [isSubmittingToSupabase, setIsSubmittingToSupabase] = useState<boolean>(false);
+  const [supabaseSubmitted, setSupabaseSubmitted] = useState<boolean>(false);
+  const [supabaseError, setSupabaseError] = useState<string | null>(null);
 
   const currentQuestion: QuizQuestion | undefined = quiz.questions[currentQIndex];
 
@@ -61,6 +69,15 @@ export default function App() {
 
   // Start the Quiz from Intro
   const handleStartQuiz = () => {
+    if (!studentName || studentName.trim().length === 0) {
+      setNameValidationError(true);
+      const inputEl = document.getElementById('group-name-input');
+      if (inputEl) {
+        inputEl.focus();
+      }
+      return;
+    }
+    setNameValidationError(false);
     setCurrentQIndex(0);
     setScore(0);
     setStreak(0);
@@ -68,6 +85,9 @@ export default function App() {
     setAnswerHistory([]);
     setIsAnswerLocked(false);
     setSelectedOption(null);
+    setSupabaseSubmitted(false);
+    setIsSubmittingToSupabase(false);
+    setSupabaseError(null);
     setAppState('quiz');
   };
 
@@ -140,6 +160,48 @@ export default function App() {
   const totalCorrect = answerHistory.filter((a) => a.isCorrect).length;
   const accuracyPercent = quiz.questions.length > 0 ? Math.round((totalCorrect / quiz.questions.length) * 100) : 0;
   
+  // Automatic submission of results to Supabase table 'mev' when reaching summary screen
+  useEffect(() => {
+    if (appState === 'summary' && !supabaseSubmitted && !isSubmittingToSupabase) {
+      let isMounted = true;
+      setIsSubmittingToSupabase(true);
+      setSupabaseError(null);
+
+      const groupNameToSave = (studentName && studentName.trim().length > 0)
+        ? studentName.trim()
+        : 'Grupo Sem Nome';
+
+      submitMevResult({
+        nome_grupo: groupNameToSave,
+        acertos: totalCorrect,
+        total_itens: quiz.questions.length,
+      })
+        .then((res) => {
+          if (isMounted) {
+            if (res.success) {
+              setSupabaseSubmitted(true);
+            } else {
+              setSupabaseError(res.error || 'Erro ao enviar pontuação');
+            }
+          }
+        })
+        .catch((err) => {
+          if (isMounted) {
+            setSupabaseError(err instanceof Error ? err.message : String(err));
+          }
+        })
+        .finally(() => {
+          if (isMounted) {
+            setIsSubmittingToSupabase(false);
+          }
+        });
+
+      return () => {
+        isMounted = false;
+      };
+    }
+  }, [appState, supabaseSubmitted, isSubmittingToSupabase, studentName, totalCorrect, quiz.questions.length]);
+  
   // Categorized breakdown
   const contextoAnswers = answerHistory.filter((a) => a.category === 'contexto');
   const contextoCorrect = contextoAnswers.filter((a) => a.isCorrect).length;
@@ -187,9 +249,9 @@ export default function App() {
       <main className="flex-1 flex flex-col bg-white">
         {/* ===================== TELA 1: INTRODUÇÃO VISUALMENTE POLIDA ===================== */}
         {appState === 'intro' && (
-          <div className="max-w-5xl mx-auto w-full px-4 py-6 sm:py-8 space-y-6 animate-in fade-in duration-300">
-            {/* Top Badge */}
-            <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 pb-3">
+              <div className="max-w-5xl mx-auto w-full px-4 py-6 sm:py-8 space-y-6 animate-in fade-in duration-300">
+                {/* Top Badge */}
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200 pb-3">
               <div className="flex items-center gap-2">
                 <span className="px-3 py-1 rounded-full bg-[#123d70] text-[#ffbd59] text-xs font-bold uppercase tracking-wider flex items-center gap-1.5">
                   <BookOpen className="w-3.5 h-3.5" />
@@ -325,24 +387,38 @@ export default function App() {
             </div>
 
             {/* Student/Group Setup Card */}
-            <div className="bg-white border-2 border-[#123d70]/20 rounded-3xl p-6 sm:p-7 shadow-xl shadow-[#123d70]/5 space-y-5">
+            <div className={`bg-white border-2 ${nameValidationError ? 'border-red-400 ring-2 ring-red-200' : 'border-[#123d70]/20'} rounded-3xl p-6 sm:p-7 shadow-xl shadow-[#123d70]/5 space-y-5 transition-all`}>
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div className="space-y-1">
                   <label htmlFor="group-name-input" className="flex items-center gap-2 text-xs font-bold text-[#ce6200] uppercase tracking-wider">
                     <Users className="w-4 h-4" />
-                    <span>IDENTIFICAÇÃO DO GRUPO</span>
+                    <span>IDENTIFICAÇÃO DO GRUPO <span className="text-red-500 font-black">* (Obrigatório)</span></span>
                   </label>
+                  <p className="text-xs text-slate-500 font-normal">
+                    Informe o nome da equipe ou integrantes para registro oficial da pontuação.
+                  </p>
                 </div>
 
                 <div className="w-full sm:w-80">
                   <input
                     id="group-name-input"
                     type="text"
+                    required
                     value={studentName}
-                    onChange={(e) => setStudentName(e.target.value)}
-                    placeholder="Digite o nome do grupo..."
-                    className="w-full px-4 py-3 bg-white border-2 border-[#123d70]/30 rounded-2xl text-sm text-[#123d70] font-bold focus:outline-none focus:border-[#ce6200] focus:ring-2 focus:ring-[#ffbd59] shadow-inner placeholder:text-slate-400 placeholder:font-normal"
+                    onChange={(e) => {
+                      setStudentName(e.target.value);
+                      if (nameValidationError && e.target.value.trim().length > 0) {
+                        setNameValidationError(false);
+                      }
+                    }}
+                    placeholder="Ex: Grupo 1, Manhã"
+                    className={`w-full px-4 py-3 bg-white border-2 ${nameValidationError ? 'border-red-500 focus:border-red-600 focus:ring-red-300' : 'border-[#123d70]/30 focus:border-[#ce6200] focus:ring-[#ffbd59]'} rounded-2xl text-sm text-[#123d70] font-bold focus:outline-none focus:ring-2 shadow-inner placeholder:text-slate-400 placeholder:font-normal`}
                   />
+                  {nameValidationError && (
+                    <span className="text-xs text-red-600 font-bold block mt-1.5 animate-in fade-in">
+                      ⚠️ Por favor, digite o nome do grupo antes de começar.
+                    </span>
+                  )}
                 </div>
               </div>
 
@@ -380,8 +456,11 @@ export default function App() {
                     </div>
                   )}
 
-                  <div className="text-right">
-                    <span className="text-xs sm:text-sm text-[#123d70] font-bold truncate max-w-[160px] block">
+                  <div className="text-right flex items-center gap-2">
+                    <span className="text-xs px-2.5 py-1 rounded-lg bg-slate-100 text-[#123d70] font-bold">
+                      Acertos: <strong className="text-[#ce6200]">{totalCorrect}</strong>/{quiz.questions.length}
+                    </span>
+                    <span className="text-xs sm:text-sm text-[#123d70] font-bold truncate max-w-[140px] block">
                       {studentName}
                     </span>
                   </div>
@@ -572,6 +651,51 @@ export default function App() {
                 </div>
                 <span className="text-xs text-slate-500 font-bold block mt-1">{totalCorrect} de {quiz.questions.length} questões acertadas</span>
               </div>
+            </div>
+
+            {/* Supabase Status Banner */}
+            <div className="max-w-xl mx-auto w-full">
+              {isSubmittingToSupabase && (
+                <div className="p-4 rounded-2xl bg-blue-50 border-2 border-blue-300 flex items-center justify-center gap-3 text-[#123d70] font-bold text-sm shadow-sm animate-pulse">
+                  <Loader2 className="w-5 h-5 animate-spin text-[#123d70]" />
+                  <span>Registrando pontuação do grupo no sistema...</span>
+                </div>
+              )}
+
+              {supabaseSubmitted && (
+                <div className="p-4 rounded-2xl bg-emerald-50 border-2 border-emerald-500 flex items-center justify-center gap-2 text-emerald-800 font-black text-sm sm:text-base shadow-md animate-in fade-in zoom-in-95 duration-300 text-center">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+                  <span>✅ Pontuação enviada com sucesso para o professor!</span>
+                </div>
+              )}
+
+              {supabaseError && !supabaseSubmitted && (
+                <div className="p-4 rounded-2xl bg-amber-50 border-2 border-amber-400 flex flex-col sm:flex-row items-center justify-between gap-3 text-amber-900 text-xs sm:text-sm shadow-sm">
+                  <div className="flex items-center gap-2 font-medium">
+                    <AlertCircle className="w-4 h-4 text-amber-700 shrink-0" />
+                    <span>Não foi possível conectar ao banco automaticamente.</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsSubmittingToSupabase(true);
+                      setSupabaseError(null);
+                      submitMevResult({
+                        nome_grupo: studentName?.trim() || 'Grupo Sem Nome',
+                        acertos: totalCorrect,
+                        total_itens: quiz.questions.length,
+                      }).then((res) => {
+                        if (res.success) setSupabaseSubmitted(true);
+                        else setSupabaseError(res.error || 'Erro ao reenviar');
+                      }).catch((e) => setSupabaseError(String(e)))
+                        .finally(() => setIsSubmittingToSupabase(false));
+                    }}
+                    className="px-4 py-2 bg-[#123d70] text-white rounded-xl text-xs font-bold hover:bg-[#103664] transition-all cursor-pointer shrink-0"
+                  >
+                    Tentar Novamente
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* Pedagogical Mastery Breakdown */}
