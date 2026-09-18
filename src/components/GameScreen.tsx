@@ -678,6 +678,13 @@ export const GameScreen: React.FC<GameScreenProps> = ({
             <p className="text-xs sm:text-sm text-slate-300 max-w-lg mx-auto">
               Parabéns a todas as equipes pela dedicação, raciocínio rápido e colaboração em grupo.
             </p>
+            {/* Banner fixo de pontuação registrada com sucesso */}
+            <div className="pt-2">
+              <div className="inline-flex items-center justify-center gap-2 px-6 py-3 rounded-2xl bg-emerald-500/20 border-2 border-emerald-500 text-emerald-300 font-black text-sm sm:text-base shadow-lg animate-in fade-in duration-300">
+                <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+                <span>✅ Pontuação registrada com sucesso no sistema!</span>
+              </div>
+            </div>
           </div>
 
           {/* Podium 3D Columns */}

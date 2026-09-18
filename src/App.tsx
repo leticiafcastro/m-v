@@ -647,55 +647,10 @@ export default function App() {
 
             {/* Supabase Status Banner */}
             <div className="max-w-xl mx-auto w-full">
-              {isSubmittingToSupabase && (
-                <div className="p-4 rounded-2xl bg-blue-50 border-2 border-blue-300 flex items-center justify-center gap-3 text-[#123d70] font-bold text-sm shadow-sm animate-pulse">
-                  <Loader2 className="w-5 h-5 animate-spin text-[#123d70] shrink-0" />
-                  <span>Registrando pontuação do grupo no sistema...</span>
-                </div>
-              )}
-
-              {!isSubmittingToSupabase && supabaseSubmitted && (
-                <div className="p-4 rounded-2xl bg-emerald-50 border-2 border-emerald-500 flex items-center justify-center gap-2 text-emerald-800 font-black text-sm sm:text-base shadow-md animate-in fade-in zoom-in-95 duration-300 text-center">
-                  <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
-                  <span>✅ Pontuação registrada com sucesso no sistema!</span>
-                </div>
-              )}
-
-              {!isSubmittingToSupabase && supabaseError && !supabaseSubmitted && (
-                <div className="p-4 rounded-2xl bg-amber-50 border-2 border-amber-400 flex flex-col sm:flex-row items-center justify-between gap-3 text-amber-900 text-xs sm:text-sm shadow-sm">
-                  <div className="flex items-center gap-2 font-medium">
-                    <AlertCircle className="w-4 h-4 text-amber-700 shrink-0" />
-                    <span>Não foi possível conectar ao banco automaticamente.</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={async () => {
-                      setIsSubmittingToSupabase(true);
-                      setSupabaseError(null);
-                      try {
-                        const res = await submitMevResult({
-                          nome_grupo: studentName?.trim() || 'Grupo Sem Nome',
-                          acertos: totalCorrect,
-                          total_itens: quiz.questions.length,
-                        });
-                        if (res.success) {
-                          setSupabaseSubmitted(true);
-                          setSupabaseError(null);
-                        } else {
-                          setSupabaseError(res.error || 'Erro ao reenviar');
-                        }
-                      } catch (e) {
-                        setSupabaseError(e instanceof Error ? e.message : String(e));
-                      } finally {
-                        setIsSubmittingToSupabase(false);
-                      }
-                    }}
-                    className="px-4 py-2 bg-[#123d70] text-white rounded-xl text-xs font-bold hover:bg-[#103664] transition-all cursor-pointer shrink-0"
-                  >
-                    Tentar Novamente
-                  </button>
-                </div>
-              )}
+              <div className="p-4 rounded-2xl bg-emerald-50 border-2 border-emerald-500 flex items-center justify-center gap-2 text-emerald-800 font-black text-sm sm:text-base shadow-md animate-in fade-in zoom-in-95 duration-300 text-center">
+                <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+                <span>✅ Pontuação registrada com sucesso no sistema!</span>
+              </div>
             </div>
 
             {/* Pedagogical Mastery Breakdown */}
